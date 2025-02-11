@@ -1,10 +1,6 @@
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import Producer
-import logging
-import uuid
-import random
-import time
-import json
+import logging, uuid, random, time, json
 
 KAFKA_BROKERS = "localhost:29092, localhost:39092, localhost:49092"
 NUM_PARTITIONS = 5
