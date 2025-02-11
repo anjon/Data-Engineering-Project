@@ -30,7 +30,7 @@ def create_topic(topic_name):
 
     try:
         metadata = admin_client.list_topics(timeout=10)
-        if topic_name not in metadata.topics():
+        if topic_name not in metadata.topics:
             topic = NewTopic(
                 topic = topic_name,
                 num_partitions = NUM_PARTITIONS,
@@ -53,7 +53,7 @@ def create_topic(topic_name):
 
 def generate_transaction():
     return dict(
-        transactionId = str(uuid.UUID),
+        transactionId = str(uuid.uuid4()),
         userId = f"user_{random.randint(1, 100)}",
         amount = round(random.uniform(50000, 150000), 2),
         transactionTime = int(time.time()),
