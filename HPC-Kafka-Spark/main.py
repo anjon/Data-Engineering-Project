@@ -1,6 +1,6 @@
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka import Producer
-import logging, uuid, random, time, json
+import logging, uuid, random, time, json, threading
 
 KAFKA_BROKERS = "localhost:29092, localhost:39092, localhost:49092"
 NUM_PARTITIONS = 5
@@ -71,9 +71,7 @@ def delivery_report(err, msg):
     else:
         print(f"Record {msg.key()} successfully produced")
 
-if __name__ == '__main__':
-    create_topic(TOPIC_NAME)
-
+def produce_transaction(thread_id):
     while True:
         transaction = generate_transaction()
 
@@ -84,8 +82,29 @@ if __name__ == '__main__':
                 value=json.dumps(transaction).encode('utf-8'),
                 on_delivery=delivery_report
             )
-            print(f"Produce transaction: {transaction}")
+            print(f"Thread {thread_id} - Produce transaction: {transaction}")
             producer.flush()
 
         except Exception as e:
             print(f"Error sending transaction: {e}")
+
+def produce_data_in_parallel(num_thread):
+    threads = []
+    try:
+        for i in range(num_thread):
+            thread = threading.Thread(target=produce_transaction, args=(i,))
+            thread.daemon = True
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+    except Exception as e:
+        print(f"Error message {e}")
+
+if __name__ == '__main__':
+    create_topic(TOPIC_NAME)
+    produce_data_in_parallel(3)
+
+
