@@ -31,3 +31,38 @@ transaction_schema = StructType([
         StructField('isInternational', StringType(), True),
         StructField('currency', StringType(), True),
         ])
+
+kafka_streams = (spark.readStream
+                 .format("kafka")
+                 .option('kafka.bootstrap.servers', KAFKA_BROKERS)
+                 .option('subscribe', SOURCE_TOPIC)
+                 .option('startingOffsets', 'earliest')
+                 ).load()
+
+transaction_df = kafka_streams.setectExpr("CAST(value as STRING)") \
+        .select(from_json(col('value'), transaction_schema).alias("data")) \
+        .select("data.*")
+
+transaction_df = transaction_df.withColumn('transactionTimestamp', 
+                                (col("transactionTime") / 1000).cast('timestamp'))
+
+aggregated_df = transaction_df.groupby("merchantId") \
+        .agg(
+        sum("amount").alias('totalAmount'),
+        count("*").alias("transactionCount")
+        )
+
+aggregation_query = aggregated_df \
+        .withColumn('key', col('merchantId').cast('string')) \
+        .withColumn('value', to_json(struct(
+        col('merchantId'),
+        col('totalAmount'),
+        col('transactionCount()')
+))).selectExpr('key', 'value') \
+        .writeStream \
+        .format('kafka') \
+        .outputMode('update') \
+        .option('kafka.bootstrap.servers', KAFKA_BROKERS) \
+        .option('topic', AGGREGATES_TOPIC) \
+        .option('checkpointLocation', f'{CHEKPOINT_DIR}/aggregates') \
+        .start().awaitTermination()
